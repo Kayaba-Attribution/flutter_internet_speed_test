@@ -32,6 +32,14 @@ class FlutterInternetSpeedTestPlugin : FlutterPlugin, MethodCallHandler, Activit
 
     private val logger = Logger()
 
+    private fun safelyUpdateUI(argsMap: Map<String, Any>) {
+        val runOnUIThread = Runnable {
+            methodChannel.invokeMethod("callListener", argsMap)
+        }
+    
+        activity?.runOnUiThread(runOnUIThread) ?: logger.print("Activity is null, cannot update UI from background.")
+    }
+
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         applicationContext = flutterPluginBinding.applicationContext
         methodChannel =
@@ -124,18 +132,14 @@ class FlutterInternetSpeedTestPlugin : FlutterPlugin, MethodCallHandler, Activit
                             override fun onComplete(transferRate: Double) {
                                 argsMap["transferRate"] = transferRate
                                 argsMap["type"] = ListenerEnum.COMPLETE.ordinal
-                                activity!!.runOnUiThread {
-                                    methodChannel.invokeMethod("callListener", argsMap)
-                                }
+                                safelyUpdateUI(argsMap)
                             }
 
                             override fun onError(speedTestError: String, errorMessage: String) {
                                 argsMap["speedTestError"] = speedTestError
                                 argsMap["errorMessage"] = errorMessage
                                 argsMap["type"] = ListenerEnum.ERROR.ordinal
-                                activity!!.runOnUiThread {
-                                    methodChannel.invokeMethod("callListener", argsMap)
-                                }
+                                safelyUpdateUI(argsMap)
                             }
 
                             override fun onProgress(percent: Double, transferRate: Double) {
@@ -143,9 +147,7 @@ class FlutterInternetSpeedTestPlugin : FlutterPlugin, MethodCallHandler, Activit
                                 argsMap["percent"] = percent
                                 argsMap["transferRate"] = transferRate
                                 argsMap["type"] = ListenerEnum.PROGRESS.ordinal
-                                activity!!.runOnUiThread {
-                                    methodChannel.invokeMethod("callListener", argsMap)
-                                }
+                                safelyUpdateUI(argsMap)
                             }
                         }, testServer, fileSize)
                     }
@@ -154,27 +156,21 @@ class FlutterInternetSpeedTestPlugin : FlutterPlugin, MethodCallHandler, Activit
                             override fun onComplete(transferRate: Double) {
                                 argsMap["transferRate"] = transferRate
                                 argsMap["type"] = ListenerEnum.COMPLETE.ordinal
-                                activity!!.runOnUiThread {
-                                    methodChannel.invokeMethod("callListener", argsMap)
-                                }
+                                safelyUpdateUI(argsMap)
                             }
 
                             override fun onError(speedTestError: String, errorMessage: String) {
                                 argsMap["speedTestError"] = speedTestError
                                 argsMap["errorMessage"] = errorMessage
                                 argsMap["type"] = ListenerEnum.ERROR.ordinal
-                                activity!!.runOnUiThread {
-                                    methodChannel.invokeMethod("callListener", argsMap)
-                                }
+                                safelyUpdateUI(argsMap)
                             }
 
                             override fun onProgress(percent: Double, transferRate: Double) {
                                 argsMap["percent"] = percent
                                 argsMap["transferRate"] = transferRate
                                 argsMap["type"] = ListenerEnum.PROGRESS.ordinal
-                                activity!!.runOnUiThread {
-                                    methodChannel.invokeMethod("callListener", argsMap)
-                                }
+                                safelyUpdateUI(argsMap)
                             }
                         }, testServer, fileSize)
                     }
@@ -308,26 +304,20 @@ class FlutterInternetSpeedTestPlugin : FlutterPlugin, MethodCallHandler, Activit
                     if (speedTestSocket.speedTestMode != SpeedTestMode.NONE) {
                         speedTestSocket.forceStopTask()
                         result.success(true)
-
-                        if (argsMap.containsKey("id1")) {
-                            val id1 = argsMap["id1"] as Int
-                            val map: MutableMap<String, Any> = mutableMapOf()
-                            map["id"] = id1
-                            map["type"] = ListenerEnum.CANCEL.ordinal
-                            activity!!.runOnUiThread {
-                                methodChannel.invokeMethod("callListener", map)
+    
+                        argsMap["id1"]?.let { id1 ->
+                            if (id1 is Int) {
+                                val map: MutableMap<String, Any> = mutableMapOf("id" to id1, "type" to ListenerEnum.CANCEL.ordinal)
+                                safelyUpdateUI(map)
                             }
                         }
-                        if (argsMap.containsKey("id2")) {
-                            val id2 = argsMap["id2"] as Int
-                            val map: MutableMap<String, Any> = mutableMapOf()
-                            map["id"] = id2
-                            map["type"] = ListenerEnum.CANCEL.ordinal
-                            activity!!.runOnUiThread {
-                                methodChannel.invokeMethod("callListener", map)
+                        argsMap["id2"]?.let { id2 ->
+                            if (id2 is Int) {
+                                val map: MutableMap<String, Any> = mutableMapOf("id" to id2, "type" to ListenerEnum.CANCEL.ordinal)
+                                safelyUpdateUI(map)
                             }
                         }
-
+    
                         speedTestSocket.clearListeners()
                         speedTestSocket = SpeedTestSocket()
                         return@Runnable
